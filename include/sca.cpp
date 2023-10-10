@@ -55,8 +55,8 @@ void smart_chip_analyzer(
   um_str_vstr   replacement_assay_group;
   um_str_vdbl   replacement_group_Ct;
   if (!replacement_stds.empty()) {
-    replacement_assay_group     = map_variable_vec(replacement_stds, {"Assay"}, id, headers);
-    replacement_group_Ct        = map_variable_vec_numeric(replacement_stds, id, {val_var}, headers);
+    replacement_assay_group = map_variable_vec(replacement_stds, {"Assay"}, id, headers);
+    replacement_group_Ct    = map_variable_vec_numeric(replacement_stds, id, {val_var}, headers);
   }
 
   vstring assays;
