@@ -1,11 +1,3 @@
-/*
- *
- * Author:      Schuyler D. Smith
- * Function:    versioning
- * Purpose:     creates verson information
- *
- */
-
 #ifndef VERSION
 #define VERSION
 
@@ -13,10 +5,13 @@
 
 std::string versioning() {
     std::string version = "\n";
-    version += "smartchip_analyzer version: ";
-    version += "1.0.1";
+    version += "smartchip_analyzer";
+    version += " ";
+    version += "version:";
+    version += " ";
+    version += "1.0.2";
     version += "  ";
-    version += "March 31, 2023";
+    version += __DATE__;
     version += "\n\n";
     return version;
 }

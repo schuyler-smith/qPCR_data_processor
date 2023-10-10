@@ -28,8 +28,8 @@
 #include "outputs.hpp"
 
 void smart_chip_analyzer(
-  std::string   qpcr_output, 
-  std::string   output, 
+  std::string   qpcr_data, 
+  std::string   output_path, 
   std::string   val_var, 
   std::string   negative_control,  
   std::string   standard, 
@@ -42,14 +42,15 @@ void smart_chip_analyzer(
   std::string   gene_magnitudes_file
 ) {
   vstring       id                  = {"Assay", "Sample"};
-  um_str_vstr   assay_group         = map_variable_vec(qpcr_output, {"Assay"}, id, headers);
-  um_str_str    group_assay         = map_variable(qpcr_output, id, "Assay", headers);
-  um_str_vdbl   group_Ct            = map_variable_vec_numeric(qpcr_output, id, {val_var}, headers);
+  um_str_vstr   assay_group         = map_variable_vec(qpcr_data, {"Assay"}, id, headers);
+  um_str_str    group_assay         = map_variable(qpcr_data, id, "Assay", headers);
+  um_str_vdbl   group_Ct            = map_variable_vec_numeric(qpcr_data, id, {val_var}, headers);
   um_str_dbl    Ct_means            = um_mean(group_Ct);
+  um_str_vdbl   array_Ct            = map_variable_vec_numeric(qpcr_data, {"Assay"}, {val_var}, headers);
+  um_str_dbl    Ct_perc_below       = um_percent_below_threshold(array_Ct, 33);
   um_str_dbl    Ct_sd               = um_sd(group_Ct);
-  um_str_str    group_sample        = map_variable(qpcr_output, id, "Sample", headers);
-  um_str_dbl    sample_Ct           = map_value_as_numeric(qpcr_output, id, val_var, headers);
-  um_str_dbl    group_efficiency    = um_mean(map_variable_vec_numeric(qpcr_output, id, {"Efficiency"}, headers));
+  um_str_str    group_sample        = map_variable(qpcr_data, id, "Sample", headers);
+  um_str_dbl    group_efficiency    = um_mean(map_variable_vec_numeric(qpcr_data, id, {"Efficiency"}, headers));
 
   um_str_vstr   replacement_assay_group;
   um_str_vdbl   replacement_group_Ct;
@@ -178,9 +179,10 @@ void smart_chip_analyzer(
 
 
 // Create reports for assays, samples, and all
-  create_reports(output, assays, groupID, group_QC, group_assay, group_sample, 
-    group_copyN, regression_map, group_efficiency, std_efficiency_map, 
-    rsqr_map, std_QC, NEG_means, QC_NEG, NTC_means, STD_means, QC_NTC);
+  create_reports(output_path, assays, 
+    groupID, group_QC, group_assay, group_sample, group_copyN, Ct_perc_below,
+    regression_map, group_efficiency, std_efficiency_map, rsqr_map, 
+    std_QC, NEG_means, QC_NEG, NTC_means, STD_means, QC_NTC);
 }
 
 #endif

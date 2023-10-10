@@ -115,6 +115,22 @@ auto map_variable_vec_numeric(std::string input_csv_file, std::vector<std::strin
   return variable_map;
 }
 
+auto um_percent_below_threshold(um_str_vdbl val_map, double threshold)
+{
+  std::unordered_map<std::string, double> perc;
+  for (auto it : val_map) {
+    double i = 0;
+    std::vector<double> values(it.second);
+    for (auto val : values) {
+      if (val <= threshold) {
+        ++i;
+      }
+    }
+    perc[it.first] = i/values.size();
+  }
+  return perc;
+}
+
 auto um_mean(um_str_vdbl val_map)
 {
   std::unordered_map<std::string, double> means;

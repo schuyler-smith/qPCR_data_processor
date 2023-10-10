@@ -1,9 +1,3 @@
-/*
- *
- * Author:  Schuyler D. Smith
- *
- */
-
 #include <iostream>
 #include <fstream>
 #include <vector>

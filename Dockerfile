@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-LABEL maintainer="Schuyler Smith <schuyler-smith.github.io>"
+LABEL maintainer="Schuyler <schuyler.smith@nutrien.com>"
 
 
 ENV DEBIAN_FRONTEND noninteractive

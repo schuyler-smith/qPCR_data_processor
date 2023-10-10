@@ -10,9 +10,42 @@
 #include "sca.cpp"
 #include "version.hpp"
 #include <lyra/lyra.hpp>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <dirent.h>
+#ifndef _WIN32
+  #include <sys/stat.h>
+#endif
 
-int main(int argc, char *argv[])
-{
+void file_check(std::string file) {
+  if (!file.empty()) {
+    std::ifstream check(file);
+    if (!check.is_open()) {
+      std::cerr << "Error: file " << file << " does not exist" << std::endl;
+    }
+  }
+}
+
+void make_dir(const std::string& directoryPath) {
+  std::stringstream ss(directoryPath);
+  std::string word;
+  std::string mkdir_path;
+
+  while (std::getline(ss, word, '/')) {
+    mkdir_path += word + '/';
+    #ifdef _WIN32
+      _mkdir(mkdir_path.c_str());
+    #else
+      mkdir(mkdir_path.c_str(), 0777);
+    #endif
+
+  }
+}
+
+
+int main(int argc, char *argv[]) {
 	std::string input;
 	std::string output;
   std::string value = "Ct";
@@ -89,41 +122,64 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  // Check all input files exist
-  std::string files[] = { input, replacement_stds, gene_magnitudes };
-  for (std::string file : files) {
-    if (!file.empty()) {
-      std::ifstream check(file);
-      if (!check.is_open()) {
-        std::cerr << "Error: file " << file << " does not exist" << std::endl;
-        return 1;
+  // create input file array:
+  std::vector<std::string> inputs;
+  DIR* directory = opendir(input.c_str());
+  if (directory != nullptr) {
+    dirent* entry;
+    while ((entry = readdir(directory)) != nullptr) {
+      if (entry->d_type == DT_REG) {
+        inputs.push_back(input + '/' + entry->d_name);
       }
     }
+    closedir(directory);
+  } else {
+    inputs.push_back(input);
   }
 
-  // create output path:
-  if (output.empty()) {
-    output = input.substr(0, input.find_last_of("."));
-  } else {
-    if (output.back() == '/' || output.back() == '\\' ) 
-    {
-      output = output + input.substr(input.find_last_of("/\\")+1);
-      output = output.substr(0, output.find_last_of("."));
-    }
+  // Check all input files exist
+  for (std::string file : inputs) {
+    file_check(file);
   }
-	smart_chip_analyzer(
-    input, 
-    output, 
-    value, 
-    negative_control, 
-    standard_id, 
-    non_template_control, 
-    headers, 
-    efficiency_min, 
-    efficiency_max, 
-    r_sqared_threshold,
-    replacement_stds,
-    gene_magnitudes
-  );
+  std::string files[] = { replacement_stds, gene_magnitudes };
+  for (std::string file : files) {
+    file_check(file);
+  }
+
+  if (output.empty()) {
+    output = input.substr(0, input.find_last_of("/\\"));
+  }
+  if (!(output.back() == '/' || output.back() == '\\')) {
+    output += "/";
+  }
+  output += "sma_output/";
+  make_dir(output);
+
+  for (std::string input_file : inputs) {
+    std::string output_file;
+    std::string filename;
+    filename = input_file.substr(input_file.find_last_of("/\\") + 1);
+    filename = filename.substr(0, filename.find_last_of("."));
+    output_file = output + filename;
+
+    std::cout << input_file << "\n";
+    std::cout << output_file << "\n";
+    
+    smart_chip_analyzer(
+      input_file, 
+      output_file, 
+      value, 
+      negative_control, 
+      standard_id, 
+      non_template_control, 
+      headers, 
+      efficiency_min, 
+      efficiency_max, 
+      r_sqared_threshold,
+      replacement_stds,
+      gene_magnitudes
+    );
+  }
+
 	return(0);
 }
