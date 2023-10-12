@@ -26,13 +26,13 @@ typedef std::multimap<std::string, std::string>                     mm_str_str;
 typedef std::unordered_map<std::string, std::vector<float> >        um_str_vflo;
 typedef std::unordered_map<std::string, std::vector<double> >       um_str_vdbl;
 
-auto extract_keys(std::unordered_map<std::string, float> const& input_map) {
+auto extract_keys(std::unordered_map<std::string, double> const& input_map) {
 	std::vector<std::string> keys;
 	for (auto const& element : input_map) {keys.push_back(element.first);}
   return keys;
 }
 
-auto extract_values(std::unordered_map<std::string, float> const& input_map) {
+auto extract_values(std::unordered_map<std::string, double> const& input_map) {
 	std::vector<float> values;
 	for (auto const& element : input_map) {values.push_back(element.second);}
 	return values;

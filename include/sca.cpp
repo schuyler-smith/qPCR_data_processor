@@ -156,6 +156,7 @@ void smart_chip_analyzer(
       [](const unsigned char lhs, const unsigned char rhs) {return std::tolower(lhs) == std::tolower(rhs);});
     return result.second != rhs.cend() && (result.first == lhs.cend() || std::tolower(*result.first) < std::tolower(*result.second));
   });
+  
   for (auto group : groupID) {
     std::string assay = group_assay[group];
     if (group_efficiency[group] >= efficiency_min) {
