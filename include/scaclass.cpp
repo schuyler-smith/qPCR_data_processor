@@ -6,6 +6,9 @@
  *
  */
 
+#ifndef SCACLASS
+#define SCACLASS
+
 
 // class for processes in include/sca.cpp
 #include <iostream>
@@ -42,6 +45,23 @@ namespace SmartchipInfra {
     return(basename);
   }
 
+  std::vector<std::string> create_file_array(const std::string& path) {
+    std::vector<std::string> files;
+    DIR* directory = opendir(path.c_str());
+    if (directory != nullptr) {
+      dirent* entry;
+      while ((entry = readdir(directory)) != nullptr) {
+        if (entry->d_type == DT_REG) {
+          files.push_back(path + '/' + entry->d_name);
+        }
+      }
+      closedir(directory);
+    } else {
+      files.push_back(path);
+    }
+    return(files);
+  }
+
   std::vector<std::string> read_csv_headers(const std::string& file_name) {
     std::string csv_file_name = file_name;
     std::ifstream csv_file(csv_file_name);
@@ -70,17 +90,16 @@ namespace SmartchipInfra {
     return true;
   }
 
-  void check_headers(const std::vector<std::string>& input_files, const std::vector<std::string>& required_headers) {
-    for (std::string file : input_files) {
-      std::vector<std::string> file_headers;
-      file_headers = SmartchipInfra::read_csv_headers(file);
-      for (const std::string& header : required_headers) {
-        if (!SmartchipInfra::contained_in_vector(file_headers, header)) {
-          throw std::invalid_argument("'" + file + "' missing required field '" + header + "'.");
-        }
+  void check_headers(const std::string& csv, const std::vector<std::string>& required_headers) {
+    std::vector<std::string> file_headers;
+    file_headers = SmartchipInfra::read_csv_headers(csv);
+    for (const std::string& header : required_headers) {
+      if (!SmartchipInfra::contained_in_vector(file_headers, header)) {
+        throw std::invalid_argument("'" + csv + "' missing required field '" + header + "'.");
       }
     }
   }
+
   void make_dir(const std::string& directoryPath) {
     std::stringstream ss(directoryPath);
     std::string word;
@@ -110,15 +129,14 @@ class SmartchipIngest {
     std::string output_file;
     std::string replacement_stds_path;
     std::string gene_magnitudes_path;
-    std::vector<std::string> input_files;
     
     SmartchipIngest(
       const std::string&  qPCR_data_path
     ) : input_path(qPCR_data_path) {
-      construct_ingest(input_path);
+      construct_ingest();
     }
 
-    void construct_ingest(const std::string&);
+    void construct_ingest();
     void set_output_dir(const std::string&);
     void set_input(const std::string&);
     void set_replacement_stds(const std::string&);
@@ -126,12 +144,9 @@ class SmartchipIngest {
   
   protected:
     um_str_flo  gene_magnitudes;
-    
-  private:
-    void create_input_file_array(const std::string&);
 };
 
-void SmartchipIngest::construct_ingest(const std::string&) {
+void SmartchipIngest::construct_ingest() {
   set_input(input_path);
   output_dir = input_path.substr(0, input_path.find_last_of("/\\"));
   output_dir += "/sca_output/";
@@ -146,7 +161,7 @@ void SmartchipIngest::set_input(const std::string& qPCR_data_path) {
     SmartchipInfra::file_check(input_path);
   }
   catch (const std::exception& e) {
-    std::cerr << "Error in input_files: " << e.what() << std::endl;
+    std::cerr << "Error in input_path: " << e.what() << std::endl;
   }
   data = input_path;
 }
@@ -171,25 +186,8 @@ void SmartchipIngest::set_gene_magnitudes(const std::string& path) {
   }
 }
 
-void SmartchipIngest::create_input_file_array(const std::string& input_path) {
-  std::vector<std::string> inputs;
-  DIR* directory = opendir(input_path.c_str());
-  if (directory != nullptr) {
-    dirent* entry;
-    while ((entry = readdir(directory)) != nullptr) {
-      if (entry->d_type == DT_REG) {
-        inputs.push_back(input_path + '/' + entry->d_name);
-      }
-    }
-    closedir(directory);
-  } else {
-    inputs.push_back(input_path);
-  }
-  input_files = inputs;
-}
-
 //
-// Class SmartchipParameters inherits from SmartchipIngest
+// Class SmartchipParameters
 //
 
 class SmartchipParameters : public SmartchipIngest {
@@ -213,6 +211,8 @@ class SmartchipParameters : public SmartchipIngest {
     SmartchipParameters(
       const SmartchipIngest ingest
     ) : SmartchipParameters(ingest.input_path) {}
+
+    // void check_Smartchip_headers();
 
     void construct_params();
     void set_assay_colname(const std::string&);
@@ -240,19 +240,28 @@ void SmartchipParameters::construct_params() {
   r_sqared_threshold    = 0.85;
 }
 
-void SmartchipParameters::set_assay_colname(const std::string& x)         {assay_colname = x;}
-void SmartchipParameters::set_sample_colname(const std::string& x)        {sample_colname = x;}
-void SmartchipParameters::set_qPCR_ct_colname(const std::string& x)       {ct_colname = x;}
+void SmartchipParameters::set_assay_colname(const std::string& x)         {assay_colname = x; SmartchipInfra::check_headers(data, {x});}
+void SmartchipParameters::set_sample_colname(const std::string& x)        {sample_colname = x; SmartchipInfra::check_headers(data, {x});}
+void SmartchipParameters::set_qPCR_ct_colname(const std::string& x)       {ct_colname = x; SmartchipInfra::check_headers(data, {x});}
+void SmartchipParameters::set_efficiency_colname(const std::string& x)    {efficiency_colname = x; SmartchipInfra::check_headers(data, {x});}
 void SmartchipParameters::set_negative_control(const std::string& x)      {negative_control_id = x;}
 void SmartchipParameters::set_standard_id(const std::string& x)           {standard_id = x;}
 void SmartchipParameters::set_non_template_control(const std::string& x)  {non_template_id = x;}
-void SmartchipParameters::set_efficiency_colname(const std::string& x)    {efficiency_colname = x;}
 void SmartchipParameters::set_efficiency_min(const float& x)              {efficiency_min = x;}
 void SmartchipParameters::set_efficiency_max(const float& x)              {efficiency_max = x;}
 void SmartchipParameters::set_r_sqared_threshold(const float& x)          {r_sqared_threshold = x;}
 
+// void SmartchipParameters::check_Smartchip_headers() {
+//   try {
+//     SmartchipInfra::check_headers(data, {sample_colname, assay_colname, efficiency_colname, ct_colname});
+//   }
+//   catch (const std::exception& e) {
+//     std::cerr << "Error in input_files: " << e.what() << std::endl;
+//   }
+// }
+
 //
-// Class SmartchipExtract inherits from SmartchipIngest
+// Class SmartchipExtract
 //
 
 class SmartchipExtract : public SmartchipParameters {
@@ -288,13 +297,12 @@ class SmartchipExtract : public SmartchipParameters {
   private:
     void construct_extract();
     std::vector<std::string> id = {assay_colname, sample_colname};
-    void check_Smaartchip_headers(const std::vector<std::string>&, const std::vector<std::string>&);
-    void extract_assay(const um_str_vstr&);
-    void extract_groups(const um_str_str&);
+    void extract_assay();
+    void extract_groups();
 };
 
 void SmartchipExtract::construct_extract() {
-  check_Smaartchip_headers(input_files, {sample_colname, assay_colname, efficiency_colname, ct_colname});
+  // check_Smartchip_headers();
   assay_group       = map_variable_vec(data, {assay_colname}, id);
   group_assay       = map_variable(data, id, assay_colname);
   group_Ct          = map_variable_vec_numeric(data, id, {ct_colname});
@@ -308,20 +316,11 @@ void SmartchipExtract::construct_extract() {
     replacement_assay_group = map_variable_vec(replacement_stds_path, {assay_colname}, id);
     replacement_group_Ct    = map_variable_vec_numeric(replacement_stds_path, id, {ct_colname});
   }
-  extract_assay(assay_group);
-  extract_groups(group_assay);
+  extract_assay();
+  extract_groups();
 }
 
-void SmartchipExtract::check_Smaartchip_headers(const std::vector<std::string>& input_files, const std::vector<std::string>& required_headers) {
-  try {
-    SmartchipInfra::check_headers(input_files, required_headers);
-  }
-  catch (const std::exception& e) {
-    std::cerr << "Error in input_files: " << e.what() << std::endl;
-  }
-}
-
-void SmartchipExtract::extract_assay(const um_str_vstr& assay_group) {
+void SmartchipExtract::extract_assay() {
   for (auto it : assay_group) {assays.push_back(it.first);}
   std::sort(assays.begin(), assays.end(), [](const std::string& lhs, const std::string& rhs) {
     const auto result = std::mismatch(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(), 
@@ -330,7 +329,7 @@ void SmartchipExtract::extract_assay(const um_str_vstr& assay_group) {
   });
 }
 
-void SmartchipExtract::extract_groups(const um_str_str& group_assay) {
+void SmartchipExtract::extract_groups() {
   for (auto const& it : group_assay) {groups.push_back(it.first);}
   std::sort(groups.begin(), groups.end(), [](const std::string& lhs, const std::string& rhs) {
     const auto result = std::mismatch(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(), 
@@ -338,8 +337,9 @@ void SmartchipExtract::extract_groups(const um_str_str& group_assay) {
     return result.second != rhs.cend() && (result.first == lhs.cend() || std::tolower(*result.first) < std::tolower(*result.second));
   });
 }
+
 //
-// Class SmartchipTransform inherits from SmartchipIngest
+// Class SmartchipTransform
 //
 
 class SmartchipTransform : public SmartchipExtract {
@@ -494,25 +494,29 @@ void SmartchipTransform::calculate_copyN(const std::string& group) {
   group_copyN[group] = copy_N;
 }
 
-class SmartchipLoad : public SmartchipTransform {
+//
+// Class SmartchipAnalyzer
+//
+
+class SmartchipAnalyzer : public SmartchipTransform {
   public:
-    SmartchipLoad(
+    SmartchipAnalyzer(
       const std::string& qPCR_data_path
     ) : SmartchipTransform(qPCR_data_path) {
       construct_load();
     }
-    SmartchipLoad(
+    SmartchipAnalyzer(
       const SmartchipIngest ingest
     ) : SmartchipTransform(ingest.input_path) {}
-    SmartchipLoad(
+    SmartchipAnalyzer(
       const SmartchipParameters parameters
     ) : SmartchipTransform(parameters.input_path) {}
-    SmartchipLoad(
+    SmartchipAnalyzer(
       const SmartchipExtract extracted
-    ) : SmartchipLoad(extracted.input_path) {}
-    SmartchipLoad(
+    ) : SmartchipAnalyzer(extracted.input_path) {}
+    SmartchipAnalyzer(
       const SmartchipTransform transformed
-    ) : SmartchipLoad(transformed.input_path) {}
+    ) : SmartchipAnalyzer(transformed.input_path) {}
 
     void build_reports();
 
@@ -520,10 +524,10 @@ class SmartchipLoad : public SmartchipTransform {
     void construct_load();
 };
 
-void SmartchipLoad::construct_load() {
+void SmartchipAnalyzer::construct_load() {
 }
 
-void SmartchipLoad::build_reports() {
+void SmartchipAnalyzer::build_reports() {
   SmartchipInfra::make_dir(output_dir);
   create_reports(output_file, assays, 
     groups, group_QC, group_assay, group_sample, group_copyN, Ct_perc_below,
@@ -531,22 +535,4 @@ void SmartchipLoad::build_reports() {
     std_QC, NEG_means, QC_NEG, NTC_means, STD_means, QC_NTC);
 }
 
-int main() {
-  SmartchipIngest test("test_data/test.csv");
-  SmartchipParameters test2(test);
-  std::cout << "test2.standard_id = " << test2.standard_id << "\n";
-  SmartchipExtract test3(test2);
-  std::cout << "test3.standard_id = " << test3.standard_id << "\n";
-  for (const auto& s : test3.assays) {std::cout << s << " ";}
-  std::cout << "\n";
-  SmartchipTransform test4(test3);
-  for (const auto& s : extract_values(test4.rsqr_map)) {std::cout << s << " ";}
-  std::cout << "\n";
-  SmartchipLoad test5(test3);
-  std::cout << "test5.output_dir = " << test5.output_file << "\n";
-  // SmartchipInfra::make_dir(test5.output_dir);
-  test5.build_reports();
-	return(0);
-}
-
-// g++ src/test.cpp  -o test_snippet -I ./include; ./test_snippet
+#endif

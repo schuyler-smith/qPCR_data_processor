@@ -7,7 +7,7 @@
  */
 
 
-#include "sca.cpp"
+#include "scaclass.cpp"
 #include "version.hpp"
 #include <lyra/lyra.hpp>
 #include <iostream>
@@ -19,40 +19,16 @@
   #include <sys/stat.h>
 #endif
 
-void file_check(std::string file) {
-  if (!file.empty()) {
-    std::ifstream check(file);
-    if (!check.is_open()) {
-      std::cerr << "Error: file " << file << " does not exist" << std::endl;
-    }
-  }
-}
-
-void make_dir(const std::string& directoryPath) {
-  std::stringstream ss(directoryPath);
-  std::string word;
-  std::string mkdir_path;
-
-  while (std::getline(ss, word, '/')) {
-    mkdir_path += word + '/';
-    #ifdef _WIN32
-      _mkdir(mkdir_path.c_str());
-    #else
-      mkdir(mkdir_path.c_str(), 0777);
-    #endif
-
-  }
-}
-
-
 int main(int argc, char *argv[]) {
 	std::string input;
 	std::string output;
   std::string value = "Ct";
+  std::string assay = "Assay";
+  std::string sample = "Sample";
+  std::string efficiency = "Efficiency";
   std::string negative_control = "NEG";
   std::string standard_id = "STD";
   std::string non_template_control = "NTC";
-  bool        headers = true;
   float       efficiency_min = 1.70;
   float       efficiency_max = 2.20;
   float       r_sqared_threshold = 0.85;
@@ -76,9 +52,15 @@ int main(int argc, char *argv[]) {
     | lyra::opt( value, "Ct")
       ["-c"]["--Ct"]
       ("Column name in input file to use for the cycle thresholds.")
-    | lyra::opt( headers, "true" )
-      ["-j"]["--headers"]
-      ("Whether the input file has a header row.")
+    | lyra::opt( sample, "Sample")
+      ["-s"]["--sample"]
+      ("Column name in input file to use for the Sample IDs.")
+    | lyra::opt( assay, "Assay")
+      ["-a"]["--assay"]
+      ("Column name in input file to use for the Assay names.")
+    | lyra::opt( efficiency, "Efficiency")
+      ["-f"]["--efficiency"]
+      ("Column name in input file to use for the Efficiency scores.")
     | lyra::opt( negative_control, "NEG" )
       ["-n"]["--negcontrol"]
       ("Sample identifiers for the negative controls.")
@@ -124,61 +106,27 @@ int main(int argc, char *argv[]) {
 
   // create input file array:
   std::vector<std::string> inputs;
-  DIR* directory = opendir(input.c_str());
-  if (directory != nullptr) {
-    dirent* entry;
-    while ((entry = readdir(directory)) != nullptr) {
-      if (entry->d_type == DT_REG) {
-        inputs.push_back(input + '/' + entry->d_name);
-      }
-    }
-    closedir(directory);
-  } else {
-    inputs.push_back(input);
-  }
-
-  // Check all input files exist
-  for (std::string file : inputs) {
-    file_check(file);
-  }
-  std::string files[] = { replacement_stds, gene_magnitudes };
-  for (std::string file : files) {
-    file_check(file);
-  }
-
-  if (output.empty()) {
-    output = input.substr(0, input.find_last_of("/\\"));
-  }
-  if (!(output.back() == '/' || output.back() == '\\')) {
-    output += "/";
-  }
-  output += "sma_output/";
-  make_dir(output);
+  inputs = SmartchipInfra::create_file_array(input);
 
   for (std::string input_file : inputs) {
-    std::string output_file;
-    std::string filename;
-    filename = input_file.substr(input_file.find_last_of("/\\") + 1);
-    filename = filename.substr(0, filename.find_last_of("."));
-    output_file = output + filename;
-
-    std::cout << input_file << "\n";
-    std::cout << output_file << "\n";
-    
-    smart_chip_analyzer(
-      input_file, 
-      output_file, 
-      value, 
-      negative_control, 
-      standard_id, 
-      non_template_control, 
-      headers, 
-      efficiency_min, 
-      efficiency_max, 
-      r_sqared_threshold,
-      replacement_stds,
-      gene_magnitudes
-    );
+    SmartchipParameters sma(input_file);
+    sma.set_replacement_stds(replacement_stds);
+    sma.set_gene_magnitudes(gene_magnitudes);
+    if (!output.empty()) {
+      sma.set_output_dir(output);
+    }
+    sma.set_assay_colname(assay);
+    sma.set_sample_colname(sample);
+    sma.set_qPCR_ct_colname(value);
+    sma.set_efficiency_colname(efficiency);
+    sma.set_negative_control(negative_control);
+    sma.set_standard_id(standard_id);
+    sma.set_non_template_control(non_template_control);
+    sma.set_efficiency_min(efficiency_min);
+    sma.set_efficiency_max(efficiency_max);
+    sma.set_r_sqared_threshold(r_sqared_threshold);
+    SmartchipAnalyzer sma_report(sma);
+    sma_report.build_reports();
   }
 
 	return(0);
