@@ -9,12 +9,12 @@ SRCS:=
 
 all: \
 		bin \
-		bin/smart_chip_analyzer 
+		bin/qPCR_data_processor 
 
 bin:
 	$(shell mkdir -p $(@))
 
-bin/smart_chip_analyzer: src/smart_chip_analyzer.cpp
+bin/qPCR_data_processor: src/qPCR_data_processor.cpp
 	$(CXX) $(?) $(CXXFLAGS) -o $(@) $(LDFLAGS)
 
 test: include/test.cpp
@@ -24,6 +24,6 @@ test: include/test.cpp
 
 # install:
 
-.PHONY: bin/smart_chip_analyzer
+.PHONY: bin/qPCR_data_processor
 
-# g++ .\src\smart_chip_analyzer.cpp -o smartchip_analyzer_win -I include -static-libgcc -static-libstdc++
+# g++ .\src\qPCR_data_processor.cpp -o qPCR_data_processor -I include -static-libgcc -static-libstdc++

@@ -4,3 +4,5 @@ bin
 test*
 notes*
 *.R
+.vscode/settings.json
+.vscode/settings.json
