@@ -7,19 +7,28 @@
  */
 
 
-#include "sca.cpp"
+#include "scaclass.cpp"
 #include "version.hpp"
 #include <lyra/lyra.hpp>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <dirent.h>
+#ifndef _WIN32
+  #include <sys/stat.h>
+#endif
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	std::string input;
 	std::string output;
   std::string value = "Ct";
+  std::string assay = "Assay";
+  std::string sample = "Sample";
+  std::string efficiency = "Efficiency";
   std::string negative_control = "NEG";
   std::string standard_id = "STD";
   std::string non_template_control = "NTC";
-  bool        headers = true;
   float       efficiency_min = 1.70;
   float       efficiency_max = 2.20;
   float       r_sqared_threshold = 0.85;
@@ -43,9 +52,15 @@ int main(int argc, char *argv[])
     | lyra::opt( value, "Ct")
       ["-c"]["--Ct"]
       ("Column name in input file to use for the cycle thresholds.")
-    | lyra::opt( headers, "true" )
-      ["-j"]["--headers"]
-      ("Whether the input file has a header row.")
+    | lyra::opt( sample, "Sample")
+      ["-s"]["--sample"]
+      ("Column name in input file to use for the Sample IDs.")
+    | lyra::opt( assay, "Assay")
+      ["-a"]["--assay"]
+      ("Column name in input file to use for the Assay names.")
+    | lyra::opt( efficiency, "Efficiency")
+      ["-f"]["--efficiency"]
+      ("Column name in input file to use for the Efficiency scores.")
     | lyra::opt( negative_control, "NEG" )
       ["-n"]["--negcontrol"]
       ("Sample identifiers for the negative controls.")
@@ -89,41 +104,30 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  // Check all input files exist
-  std::string files[] = { input, replacement_stds, gene_magnitudes };
-  for (std::string file : files) {
-    if (!file.empty()) {
-      std::ifstream check(file);
-      if (!check.is_open()) {
-        std::cerr << "Error: file " << file << " does not exist" << std::endl;
-        return 1;
-      }
+  // create input file array:
+  std::vector<std::string> inputs;
+  inputs = SmartchipInfra::create_file_array(input);
+
+  for (std::string input_file : inputs) {
+    SmartchipParameters sma(input_file);
+    sma.set_replacement_stds(replacement_stds);
+    sma.set_gene_magnitudes(gene_magnitudes);
+    if (!output.empty()) {
+      sma.set_output_dir(output);
     }
+    sma.set_assay_colname(assay);
+    sma.set_sample_colname(sample);
+    sma.set_qPCR_ct_colname(value);
+    sma.set_efficiency_colname(efficiency);
+    sma.set_negative_control(negative_control);
+    sma.set_standard_id(standard_id);
+    sma.set_non_template_control(non_template_control);
+    sma.set_efficiency_min(efficiency_min);
+    sma.set_efficiency_max(efficiency_max);
+    sma.set_r_sqared_threshold(r_sqared_threshold);
+    SmartchipAnalyzer sma_report(sma);
+    sma_report.build_reports();
   }
 
-  // create output path:
-  if (output.empty()) {
-    output = input.substr(0, input.find_last_of("."));
-  } else {
-    if (output.back() == '/' || output.back() == '\\' ) 
-    {
-      output = output + input.substr(input.find_last_of("/\\")+1);
-      output = output.substr(0, output.find_last_of("."));
-    }
-  }
-	smart_chip_analyzer(
-    input, 
-    output, 
-    value, 
-    negative_control, 
-    standard_id, 
-    non_template_control, 
-    headers, 
-    efficiency_min, 
-    efficiency_max, 
-    r_sqared_threshold,
-    replacement_stds,
-    gene_magnitudes
-  );
 	return(0);
 }

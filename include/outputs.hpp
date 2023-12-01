@@ -1,8 +1,8 @@
 /*
  *
  * Author:  Schuyler D. Smith
- * Function:  create_reports
- * Purpose: creates output report files
+ * Function:  smart_chip_analyzer
+ * Purpose: process outputs from the SmartChip qPCR
  *
  */
 
@@ -38,21 +38,22 @@ void create_assay_report(
   um_str_str  QC_NEG,
   um_str_dbl  NTC_means,
   um_str_dbl  STD_means,
-  um_str_str  QC_NTC
+  um_str_str  QC_NTC,
+  um_str_dbl  Ct_perc_below
 ) {
   std::ofstream assay_report_file(output + "_assay_QC_report.csv");
   assay_report_file 
-    << "Assay," 
-    << "STD_Efficiency," 
-    << "Slope," 
-    << "Intercept," 
-    << "Rsqr," 
-    << "QC_StdCurve," 
-    << "NEG_Ct," 
-    << "QC_NEG," 
-    << "NTC_diff," 
-    << "QC_NTC" 
-    << "\n";
+    << "Assay" << ","
+    << "STD_Efficiency" << ","
+    << "Slope" << ","
+    << "Intercept" << ","
+    << "Rsqr" << ","
+    << "QC_StdCurve" << ","
+    << "NEG_Ct" << ","
+    << "QC_NEG" << ","
+    << "NTC_diff" << ","
+    << "QC_NTC" << ","
+    << "Percent_Positive_Samples" << "\n";
   for (auto assay : assays) {
     assay_report_file 
       << assay << ","
@@ -64,8 +65,8 @@ void create_assay_report(
       << NEG_means[assay] << ","
       << QC_NEG[assay] << ","
       << NTC_means[assay] - STD_means[assay] << ","
-      << QC_NTC[assay]
-      << "\n";
+      << QC_NTC[assay] << ","
+      << std::round(Ct_perc_below[assay]*100) << "\n";
   }
 }
 
@@ -90,6 +91,52 @@ void create_sample_report(
   for (auto group : groupID) {
     sample_report_file 
       << group_assay[group] << ","
+      << group_sample[group] << ","
+      << mean(group_copyN[group]) << ","
+      << sd(group_copyN[group]) << ","
+      << group_efficiency[group] << ","
+      << group_QC[group] 
+      << "\n";
+  }
+}
+
+void create_LIMS_report(
+  std::string output,
+  vstring     groupID,
+  um_str_str  group_QC,
+  um_str_str  group_assay,
+  um_str_str  group_sample,
+  um_str_vdbl group_copyN,
+  um_str_dbl  group_efficiency
+) {   
+  std::ofstream LIMS_report_file(output + "_LIMS_report.csv");
+  int row = 0;
+  LIMS_report_file 
+    << ","
+    << "Number,"
+    << "Assay,"
+    << "Cycle,"
+    << "FunctionalGroup,"
+    << "GeneClass,"
+    << "Measure," 
+    << "JIC,"
+    << "Sample," 
+    << "meanCopyN," 
+    << "stderr_CopyN," 
+    << "Mean_Efficiency," 
+    << "QCSample," 
+    << "\n";
+  for (auto group : groupID) {
+    ++row;
+    LIMS_report_file
+      << row
+      << ","
+      << ","
+      << ","
+      << ","
+      << ","
+      << group_assay[group] << ","
+      << ","
       << group_sample[group] << ","
       << mean(group_copyN[group]) << ","
       << sd(group_copyN[group]) << ","
@@ -160,6 +207,7 @@ void create_reports(
   um_str_str  group_assay,
   um_str_str  group_sample,
   um_str_vdbl group_copyN,
+  um_str_dbl  Ct_perc_below,
   um_str_pair_dbl_dbl regression_map,
   um_str_dbl  group_efficiency,
   um_str_dbl  std_efficiency_map,
@@ -172,9 +220,11 @@ void create_reports(
   um_str_str  QC_NTC
 ) {
   create_assay_report(output, assays, std_efficiency_map, regression_map, rsqr_map, 
-    std_QC, NEG_means, QC_NEG, NTC_means, STD_means, QC_NTC);
-  create_sample_report(output, groupID, group_QC, group_assay, group_sample,
-      group_copyN, group_efficiency);
+    std_QC, NEG_means, QC_NEG, NTC_means, STD_means, QC_NTC, Ct_perc_below);
+  // create_sample_report(output, groupID, group_QC, group_assay, group_sample,
+  //     group_copyN, group_efficiency);
+  create_LIMS_report(output, groupID, group_QC, group_assay, group_sample,
+    group_copyN, group_efficiency);
   create_full_report(output, groupID, group_QC, group_assay, group_sample, 
     group_copyN, group_efficiency, std_efficiency_map, rsqr_map, 
     std_QC, NEG_means, QC_NEG, NTC_means, STD_means, QC_NTC);

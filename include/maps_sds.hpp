@@ -26,22 +26,19 @@ typedef std::multimap<std::string, std::string>                     mm_str_str;
 typedef std::unordered_map<std::string, std::vector<float> >        um_str_vflo;
 typedef std::unordered_map<std::string, std::vector<double> >       um_str_vdbl;
 
-auto extract_keys(std::unordered_map<std::string, float> const& input_map)
-{
+auto extract_keys(std::unordered_map<std::string, double> const& input_map) {
 	std::vector<std::string> keys;
 	for (auto const& element : input_map) {keys.push_back(element.first);}
   return keys;
 }
 
-auto extract_values(std::unordered_map<std::string, float> const& input_map)
-{
+auto extract_values(std::unordered_map<std::string, double> const& input_map) {
 	std::vector<float> values;
 	for (auto const& element : input_map) {values.push_back(element.second);}
 	return values;
 }
 
-auto map_headers(std::string input_csv_file)
-{
+auto map_headers(std::string input_csv_file) {
   std::ifstream csv_file(input_csv_file);
   std::string line;
   std::string csv_line;
@@ -59,8 +56,7 @@ auto map_headers(std::string input_csv_file)
   return headers;
 }
 
-auto map_variable_vec(std::string input_csv_file, std::vector<std::string> variables, std::vector<std::string> values, bool headers=true)
-{
+auto map_variable_vec(std::string input_csv_file, std::vector<std::string> variables, std::vector<std::string> values, bool headers=true) {
   std::ifstream csv_file(input_csv_file);
   std::string line;
   std::vector<std::string> row_data;
@@ -86,8 +82,7 @@ auto map_variable_vec(std::string input_csv_file, std::vector<std::string> varia
   return variable_map;
 }
 
-auto map_variable_vec_numeric(std::string input_csv_file, std::vector<std::string> variables, std::vector<std::string> values, bool headers=true)
-{
+auto map_variable_vec_numeric(std::string input_csv_file, std::vector<std::string> variables, std::vector<std::string> values, bool headers=true) {
   std::ifstream csv_file(input_csv_file);
   std::string line;
   std::vector<std::string> row_data;
@@ -115,8 +110,22 @@ auto map_variable_vec_numeric(std::string input_csv_file, std::vector<std::strin
   return variable_map;
 }
 
-auto um_mean(um_str_vdbl val_map)
-{
+auto um_percent_below_threshold(um_str_vdbl val_map, double threshold) {
+  std::unordered_map<std::string, double> perc;
+  for (auto it : val_map) {
+    double i = 0;
+    std::vector<double> values(it.second);
+    for (auto val : values) {
+      if (val <= threshold) {
+        ++i;
+      }
+    }
+    perc[it.first] = i/values.size();
+  }
+  return perc;
+}
+
+auto um_mean(um_str_vdbl val_map) {
   std::unordered_map<std::string, double> means;
   for (auto it : val_map) {
     std::vector<double> values(it.second);
@@ -125,8 +134,7 @@ auto um_mean(um_str_vdbl val_map)
   return means;
 }
 
-auto um_sd(um_str_vdbl val_map)
-{
+auto um_sd(um_str_vdbl val_map) {
   std::unordered_map<std::string, double> means;
   std::unordered_map<std::string, double> sd;
   means = um_mean(val_map);
@@ -141,8 +149,7 @@ auto um_sd(um_str_vdbl val_map)
   return sd;
 }
 
-auto map_variable(std::string input_csv_file, std::vector<std::string> variables, std::string value, bool headers=true)
-{
+auto map_variable(std::string input_csv_file, std::vector<std::string> variables, std::string value, bool headers=true) {
   std::ifstream csv_file(input_csv_file);
   std::string line;
   std::vector<std::string> row_data;
@@ -161,8 +168,7 @@ auto map_variable(std::string input_csv_file, std::vector<std::string> variables
   return variable_map;
 }
 
-auto map_value_as_numeric(std::string input_csv_file, std::vector<std::string> variables, std::string value, bool headers=true)
-{
+auto map_value_as_numeric(std::string input_csv_file, std::vector<std::string> variables, std::string value, bool headers=true) {
   std::unordered_map<std::string, double> numeric_map;
   std::unordered_map<std::string, std::string> val_map = map_variable(input_csv_file, variables, value, headers);
   for (auto it : val_map) {
@@ -172,8 +178,7 @@ auto map_value_as_numeric(std::string input_csv_file, std::vector<std::string> v
   return numeric_map;
 }
 
-auto map_csv(std::string input_csv_file, std::string variable, bool headers=true)
-{
+auto map_csv(std::string input_csv_file, std::string variable, bool headers=true) {
   std::ifstream csv_file(input_csv_file);
   std::string line;
   std::vector<std::string> row_data;
@@ -201,13 +206,11 @@ auto map_csv(std::string input_csv_file, std::string variable, bool headers=true
 }
 
 
-void print_mm(mm_str_str& myContainer)
-{
+void print_mm(mm_str_str& myContainer) {
   for (auto pr : myContainer) {std::cout << pr.first << ", " << pr.second << '\n';}
 }
 
-void print_um(um_str_vstr const &m)
-{
+void print_um(um_str_vstr const &m) {
   for (auto const &pair: m) {
     std::string sec;
     for (int i = 0; i < pair.second.size(); ++i) {
@@ -222,8 +225,7 @@ void print_um(um_str_vstr const &m)
 }
 
 
-auto file_map(std::string file_name)
-{
+auto file_map(std::string file_name) {
   std::unordered_map<std::string, float> out_map;
   std::ifstream file(file_name);
   std::string line;
